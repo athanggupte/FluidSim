@@ -14,14 +14,16 @@ struct Mesh
 	std::vector<uint32_t> indices;
 };
 
+enum Shape {
+	Sphere,
+	Plane
+};
+
 namespace shapes {
 
-	struct Sphere
-	{
-		float radius;
-		glm::vec3 position;
-	};
+	struct Sphere { constexpr static Shape shape = Shape::Sphere; };
+	struct Plane { constexpr static Shape shape = Shape::Plane; };
 	
-	Mesh createMesh(Sphere sphere);
+	Mesh createMesh(shapes::Sphere sphere);
 
 }

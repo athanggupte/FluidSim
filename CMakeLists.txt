@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(FluidSim)
+project(FluidSim LANGUAGES C CXX CUDA)
 
 # Set C/C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -19,6 +19,7 @@ set(SOURCES
 	src/main.cpp
 	src/render.cpp
 	src/shapes.cpp
+	src/simulation.cpp
 
 	# Glad loader source
 	external/glad/src/glad.c
@@ -26,11 +27,13 @@ set(SOURCES
 
 # Add CUDA source files
 set(CUDA_SOURCES
-	# src/kernel.cu
+	src/simulation.cu
 )
 
 # Add sources to executable
 add_executable(fluidsim ${SOURCES} ${CUDA_SOURCES})
+
+set_target_properties(fluidsim PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 # Add include directories
 target_include_directories(fluidsim

@@ -3,24 +3,26 @@
 
 #include <glad/glad.h>
 
-struct SceneDesc
-{
-	shapes::Sphere sphere;
-	size_t sphereCount;
-};
-
 struct Scene
 {
-	bool init(SceneDesc desc);
+	glm::vec3 cameraPosition;
+
+	size_t count;
+	glm::vec3 *positions;
+};
+
+struct Renderer
+{
+	bool init();
 	void destroy();
 
-	void draw();
+	void draw(Scene &scene);
 	
 	uint32_t vertexBuffer;
 	uint32_t indexBuffer;
+	uint32_t instanceBuffer;
 	uint32_t VAO;
 	uint32_t shaderProgram;
 
-	SceneDesc sceneDesc;
 	size_t sphereTrisCount;
 };
