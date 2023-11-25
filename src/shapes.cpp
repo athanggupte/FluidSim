@@ -3,7 +3,7 @@
 
 Mesh shapes::createMesh(Sphere sphere)
 {
-	int nlat = 12, nlong = 12;
+	int nlat = 5, nlong = 5;
 
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;

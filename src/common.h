@@ -6,3 +6,9 @@
 
 #define logDebug(fmt, ...) fprintf(stdout, "[Debug] (" __FILE__ ":" STR(__LINE__) ") :: " fmt "\n", ##__VA_ARGS__)
 #define logError(fmt, ...) fprintf(stderr, "[Error] (" __FILE__ ":" STR(__LINE__) ") :: " fmt "\n", ##__VA_ARGS__)
+
+enum Result
+{
+	FLSIM_SUCCESS = 0,
+	FLSIM_ERROR   = 1
+};

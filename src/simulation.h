@@ -1,43 +1,55 @@
 #pragma once
 #include <cuda_runtime.h>
 
-// #include <glm/glm.hpp>
+#include "common.h"
+#include "config.h"
+#include "render.h"
 
-// #define NMAX 1000  /* Max number of particles */
-// #define RCUT 2.5   /* Potential cut-off length */
+enum SimulationMode
+{
+	SM_Playthrough,
+	SM_SingleStep,
 
-// struct SimulationDesc
-// {
-// 	glm::ivec3 NUnitCell;
-// 	float      Density;
-// 	float      InitTemp;
-// 	float      DeltaTime;
-// 	int        StepLimit;
-// 	int        StepAvg;
-// };
+	SM_COUNT
+};
 
-// struct SimulationState
-// {
-// 	// Constants
-// 	glm::vec3   Region;
-// 	glm::vec3   RegionH;
-// 	float       DensityH;
+constexpr const char* SimulationModeStr[SM_COUNT] = {
+	"Playthrough",
+	"Single Step",
+};
 
-// 	// Variables
-// 	int         nParticles;
-// 	glm::vec3   p[NMAX];
-// 	glm::vec3   v[NMAX];
-// 	float       kinEnergy;
-// 	float       potEnergy;
-// 	float       totEnergy;
-// 	int         stepCount;
+enum SimulationAction
+{
+	SA_Play,
+	SA_Pause,
+	SA_Reset,
+	SA_StepForward,
+	SA_StepBackward,
+
+	SA_COUNT
+};
+
+struct Simulation
+{
+	float3 * positions;
+	float3 * velocities;
+	float * densities;
+	float * pressures;
+	float3 * accelerations;
+	cudaGraphicsResource_t particlesGLCudaResource;
+
+	Result init(Renderer& renderer);
+	Result update(float deltaTime, float totalTime);
+	Result dumpData();
+
+	Result __initializeParticles();
+	Result __simulateParticles(float deltaTime, float totalTime);
+};
 
 
-// };
-
-#define NMAX 1000
-extern float positions[NMAX][3];
-
-__global__ void cuSimulateParticles(float *positions, int count, float deltaTime, float totalTime);
-
-void simulateParticles(float *positions, int count, float deltaTime, float totalTime);
+#define cudaCall(fn, ...) \
+	cuError = fn##(##__VA_ARGS__); \
+	if (cudaSuccess != cuError) { \
+		logError("[" STR(fn) "] Failed! error : [%d] %s :: %s", cuError, cudaGetErrorName(cuError), cudaGetErrorString(cuError)); \
+		return FLSIM_ERROR; \
+	}

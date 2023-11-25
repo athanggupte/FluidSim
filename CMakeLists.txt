@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 project(FluidSim LANGUAGES C CXX CUDA)
 
 # Set C/C++ standard
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 # Find required packages
 # find_package(MPI REQUIRED)
@@ -21,8 +21,33 @@ set(SOURCES
 	src/shapes.cpp
 	src/simulation.cpp
 
-	# Glad loader source
+	# Fluid sim header files
+	src/config.h
+	src/common.h
+	src/render.h
+	src/shapes.h
+	src/simulation.h
+
+	# Glad loader source file
 	external/glad/src/glad.c
+
+	# ImGui headers
+	external/imgui/imconfig.h
+	external/imgui/imgui.h
+	external/imgui/imgui_internal.h
+	external/imgui/imstb_rectpack.h
+	external/imgui/imstb_textedit.h
+	external/imgui/imstb_truetype.h
+	external/imgui/backends/imgui_impl_glfw.h
+	external/imgui/backends/imgui_impl_opengl3.h
+	# ImGui source files
+	external/imgui/imgui.cpp
+	external/imgui/imgui_demo.cpp
+	external/imgui/imgui_draw.cpp
+	external/imgui/imgui_tables.cpp
+	external/imgui/imgui_widgets.cpp
+	external/imgui/backends/imgui_impl_glfw.cpp
+	external/imgui/backends/imgui_impl_opengl3.cpp
 )
 
 # Add CUDA source files
@@ -33,6 +58,9 @@ set(CUDA_SOURCES
 # Add sources to executable
 add_executable(fluidsim ${SOURCES} ${CUDA_SOURCES})
 
+# Set CUDA arch to compute 8.6 (for RTX 3060)
+set(CMAKE_CUDA_ARCHITECTURES "sm_86") 
+
 set_target_properties(fluidsim PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 # Add include directories
@@ -40,6 +68,8 @@ target_include_directories(fluidsim
 	PRIVATE
 	external/glad/include/
 	external/glm/
+	external/imgui/
+	external/imgui/backends/
 )
 
 # Add libraries
