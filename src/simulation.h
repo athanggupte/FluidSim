@@ -40,6 +40,7 @@ struct Simulation
 
 	uint32_t * cellStarts;
 	uint32_t * particleCellIdx;
+	uint32_t * sortedIdxs;
 
 	Result init(Renderer& renderer);
 	Result update(float deltaTime, float totalTime);
@@ -51,5 +52,14 @@ struct Simulation
 	Result __updateCells();
 };
 
+struct SimulationData
+{
+	float3 * positions;
+	float3 * velocities;
+	float  * densities;
+	float  * pressures;
+	float3 * accelerations;
 
-
+	uint32_t * cellStarts;
+	uint32_t * particleCellIdx;
+};

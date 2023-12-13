@@ -1,8 +1,10 @@
 #include "sort.h"
+#include "simulation.h"
+
 
 #define MAX_BLOCK_SZ 128
 
-__global__ void gpu_radix_sort_local(unsigned int* d_out_sorted,
+__global__ void gpu_radix_sort_local(unsigned int* d_out_sorted, unsigned int* d_out_idxs,
     unsigned int* d_prefix_sums,
     unsigned int* d_block_sums,
     unsigned int input_shift_width,
@@ -31,9 +33,10 @@ __global__ void gpu_radix_sort_local(unsigned int* d_out_sorted,
 
     extern __shared__ unsigned int shmem[];
     unsigned int* s_data = shmem;
+    unsigned int* s_idxs = &s_data[max_elems_per_block];
     // s_mask_out[] will be scanned in place
     unsigned int s_mask_out_len = max_elems_per_block + 1;
-    unsigned int* s_mask_out = &s_data[max_elems_per_block];
+    unsigned int* s_mask_out = &s_idxs[max_elems_per_block];
     unsigned int* s_merged_scan_mask_out = &s_mask_out[s_mask_out_len];
     unsigned int* s_mask_out_sums = &s_merged_scan_mask_out[max_elems_per_block];
     unsigned int* s_scan_mask_out_sums = &s_mask_out_sums[4];
@@ -43,9 +46,15 @@ __global__ void gpu_radix_sort_local(unsigned int* d_out_sorted,
     // Copy block's portion of global input data to shared memory
     unsigned int cpy_idx = max_elems_per_block * blockIdx.x + thid;
     if (cpy_idx < d_in_len)
+    {
         s_data[thid] = d_in[cpy_idx];
+		s_idxs[thid] = d_out_idxs[cpy_idx];
+    }
     else
+    {
         s_data[thid] = 0;
+	    s_idxs[thid] = 0;
+    }
 
     __syncthreads();
 
@@ -54,6 +63,7 @@ __global__ void gpu_radix_sort_local(unsigned int* d_out_sorted,
     //  then mask on the number with 11 (3) to remove the bits
     //  on the left
     unsigned int t_data = s_data[thid];
+    unsigned int t_idx  = s_idxs[thid];
     unsigned int t_2bit_extract = (t_data >> input_shift_width) & 3;
 
     for (unsigned int i = 0; i < 4; ++i)
@@ -142,6 +152,7 @@ __global__ void gpu_radix_sort_local(unsigned int* d_out_sorted,
         // Do this step for greater global memory transfer coalescing
         //  in next step
         s_data[new_pos] = t_data;
+        s_idxs[new_pos] = t_idx;
         s_merged_scan_mask_out[new_pos] = t_prefix_sum;
         
         __syncthreads();
@@ -150,10 +161,11 @@ __global__ void gpu_radix_sort_local(unsigned int* d_out_sorted,
         // Copy block-wise sort results to global 
         d_prefix_sums[cpy_idx] = s_merged_scan_mask_out[thid];
         d_out_sorted[cpy_idx] = s_data[thid];
+        d_out_idxs[cpy_idx] = s_idxs[thid];
     }
 }
 
-__global__ void gpu_glbl_shuffle(unsigned int* d_out,
+__global__ void gpu_glbl_shuffle(unsigned int* d_out, unsigned int* d_out_idxs,
     unsigned int* d_in,
     unsigned int* d_scan_block_sums,
     unsigned int* d_prefix_sums,
@@ -173,12 +185,14 @@ __global__ void gpu_glbl_shuffle(unsigned int* d_out,
     if (cpy_idx < d_in_len)
     {
         unsigned int t_data = d_in[cpy_idx];
+        unsigned int t_idx = d_out_idxs[cpy_idx];
         unsigned int t_2bit_extract = (t_data >> input_shift_width) & 3;
         unsigned int t_prefix_sum = d_prefix_sums[cpy_idx];
         unsigned int data_glbl_pos = d_scan_block_sums[t_2bit_extract * gridDim.x + blockIdx.x]
             + t_prefix_sum;
         __syncthreads();
         d_out[data_glbl_pos] = t_data;
+        d_out_idxs[data_glbl_pos] = t_idx;
     }
 }
 
@@ -228,7 +242,7 @@ void radix_sort(unsigned int* const d_out,
     //  block-wise radix sort (write blocks back to global memory)
     for (unsigned int shift_width = 0; shift_width <= 30; shift_width += 2)
     {
-        gpu_radix_sort_local<<<grid_sz, block_sz, shmem_sz>>>(d_out, 
+        gpu_radix_sort_local<<<grid_sz, block_sz, shmem_sz>>>(d_out, nullptr,
                                                                 d_prefix_sums, 
                                                                 d_block_sums, 
                                                                 shift_width, 
@@ -247,7 +261,7 @@ void radix_sort(unsigned int* const d_out,
         sum_scan_blelloch(d_scan_block_sums, d_block_sums, d_block_sums_len);
 
         // scatter/shuffle block-wise sorted array to final positions
-        gpu_glbl_shuffle<<<grid_sz, block_sz>>>(d_in, 
+        gpu_glbl_shuffle<<<grid_sz, block_sz>>>(d_in, nullptr,
                                                     d_out, 
                                                     d_scan_block_sums, 
                                                     d_prefix_sums, 

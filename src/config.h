@@ -62,7 +62,7 @@ inline void InitializeSimulationConfig(SimulationConfig& config, cudaDeviceProp 
 	config.Viscosity           = 0.001f;
 	config.CollisionDamping    = 0.85f;
 
-	config.SmoothingRadius     = 0.1f;
+	config.SmoothingRadius     = 0.5f;
 	config.ParticleRadius      = 0.025f;
 
 	//float h = config.SmoothingRadius;
@@ -81,7 +81,7 @@ inline void InitializeSimulationConfig(SimulationConfig& config, cudaDeviceProp 
 									    h_r_factor * config.ThreadGridDim.z * config.ThreadBlockDim.z);
 	config.InitPosition        = float3(-config.RegionHalf.x, config.RegionHalf.y - config.InitRegion.y, -config.InitRegion.z / 2.f);
 
-	config.CellSize            = float3(config.SmoothingRadius);
+	config.CellSize            = float3(3, 3, 3);
 	config.CellGridDim         = uint3(static_cast<uint32_t>(ceilf(config.Region.x / config.CellSize.x)),
 									   static_cast<uint32_t>(ceilf(config.Region.y / config.CellSize.y)),
 									   static_cast<uint32_t>(ceilf(config.Region.z / config.CellSize.z)));

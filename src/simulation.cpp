@@ -5,6 +5,7 @@
 
 #include "common.h"
 #include "cuda_common.h"
+#include "radix_sort.h"
 
 thread_local static cudaError_t cuError;
 
@@ -12,13 +13,17 @@ Result Simulation::init(Renderer& renderer)
 {
 	size_t size;
 
+
 	cudaCall(cudaGraphicsGLRegisterBuffer, &particlesGLCudaResource, renderer.instanceBuffer, cudaGraphicsRegisterFlagsNone);
 	cudaCall(cudaGraphicsMapResources, 1, &particlesGLCudaResource);
 	cudaCall(cudaGraphicsResourceGetMappedPointer, (void**)&positions, &size, particlesGLCudaResource);
 	if (FLSIM_SUCCESS != __initializeParticles()) {
 		return FLSIM_ERROR;
 	}
-
+	if (FLSIM_SUCCESS != __initializeCells())
+	{
+		return FLSIM_ERROR;
+	}
 	cudaCall(cudaGraphicsUnmapResources, 1, &particlesGLCudaResource);
 
 
@@ -51,6 +56,13 @@ void writeArrayToFileFloat(FILE * fp, float * arr, size_t count)
 {
 	for (size_t i = 0; i < count; i++) {
 		fprintf(fp, "%e\n", arr[i]);
+	}
+}
+
+void writeArrayToFileUint(FILE* fp, uint32_t* tmp, size_t count)
+{
+	for (size_t i = 0; i < count; i++) {
+		fprintf(fp, "%u\n", tmp[i]);
 	}
 }
 
@@ -110,6 +122,30 @@ Result Simulation::dumpData()
 	writeArrayToFileFloat3(fp, acc, gSimCfg.NumParticles);
 	fclose(fp);
 	logDebug("Finished writing accelerations to \"flsim_acc.dat\"");
+
+	free(tmp);
+
+
+	// Cell data
+	sizeInBytes = sizeof(uint32_t) * (gSimCfg.NumCells + gSimCfg.NumParticles);
+	tmp = malloc(sizeInBytes);
+	cudaMemcpy(tmp, cellStarts, sizeInBytes, cudaMemcpyDeviceToHost);
+
+	uint32_t *cellStarts, *cellIndexes;
+	cellStarts = (uint32_t*)tmp;
+	cellIndexes = (uint32_t*)&cellStarts[gSimCfg.NumCells];
+
+	// Cell Starts
+	fp = fopen("flsim_cstart.dat", "w");
+	writeArrayToFileUint(fp, cellStarts, gSimCfg.NumCells);
+	fclose(fp);
+	logDebug("Finished writing cell starts to \"flsim_cstart.data\"");
+
+	// Cell Indices
+	fp = fopen("flsim_cidx.dat", "w");
+	writeArrayToFileUint(fp, cellIndexes, gSimCfg.NumParticles);
+	fclose(fp);
+	logDebug("Finished writing cell indices to \"flsim_cidx.data\"");
 
 	free(tmp);
 

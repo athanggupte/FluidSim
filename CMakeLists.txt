@@ -80,6 +80,9 @@ set_target_properties(test_radix_sort PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 # Add include directories
 target_include_directories(fluidsim
+	PUBLIC
+	src/
+
 	PRIVATE
 	external/glad/include/
 	external/glm/
@@ -89,6 +92,9 @@ target_include_directories(fluidsim
 	external/gpu-radix-sort/
 )
 target_include_directories(test_radix_sort
+	PUBLIC
+	src/
+
 	PRIVATE
 	external/glm/
 
@@ -107,5 +113,5 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 endif()
 
 # Add compiler flags for CUDA
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-O3;--use_fast_math)
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-O3;-use_fast_math)
 

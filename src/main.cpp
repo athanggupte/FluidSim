@@ -152,6 +152,9 @@ int main(int argc, char **argv)
 	printf("    ThreadGridDim  : (%u, %u, %u)\n", gSimCfg.ThreadGridDim.x, gSimCfg.ThreadGridDim.y, gSimCfg.ThreadGridDim.z);
 	printf("    ThreadBlockDim : (%u, %u, %u)\n", gSimCfg.ThreadBlockDim.x, gSimCfg.ThreadBlockDim.y, gSimCfg.ThreadBlockDim.z);
 	printf("    Region         : (%f, %f, %f)\n", gSimCfg.Region.x, gSimCfg.Region.y, gSimCfg.Region.z);
+	printf("    Cell Size      : (%f, %f, %f)\n", gSimCfg.CellSize.x, gSimCfg.CellSize.y, gSimCfg.CellSize.z);
+	printf("    Cell Grid Dim  : (%u, %u, %u)\n", gSimCfg.CellGridDim.x, gSimCfg.CellGridDim.y, gSimCfg.CellGridDim.z);
+	printf("    Num Cells      : %zu\n", gSimCfg.NumCells);
 
 	windowData.fixedDeltaTime = gSimCfg.PhysicsDeltaTime;
 
@@ -176,6 +179,7 @@ int main(int argc, char **argv)
 		glfwTerminate();
 		return -1;
 	}
+	logDebug("Initialized simulation!");
 
 	// Control variables
 	SimulationMode simulationMode = SM_SingleStep;
