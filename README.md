@@ -2,9 +2,16 @@
 
 This project is a submission to CSCI-596: Scientific Computing and Visualization, a course offered at the University of Southern California.
 
+Low Viscous Fluid -
 ![image](https://github.com/athanggupte/FluidSim/assets/45060273/236418b5-157b-45cb-9b8f-86a88db3f7c1)
 
+High Viscous Fluid -
+![Screenshot 2023-12-13 143916](https://github.com/athanggupte/FluidSim/assets/45060273/020cf399-9ae8-49c4-9b67-fb64f3d9692a)
+![Screenshot 2023-12-13 143932](https://github.com/athanggupte/FluidSim/assets/45060273/2b5373d7-e6ca-4e32-89fd-08f2cd2859cd)
+![Screenshot 2023-12-13 144134](https://github.com/athanggupte/FluidSim/assets/45060273/9ae12828-b44d-4a0c-afd5-b8c28a892f19)
+
 ## About
+
 
 This project implements a fluid simulation using the Smoothed Particle Hydrodynamics (SPH) method, a mesh-free Lagrangian technique that approximates fluids as a collection of particles. The simulation is written in C++ and CUDA, and uses OpenGL for visualization.
 
