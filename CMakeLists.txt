@@ -27,6 +27,10 @@ set(SOURCES
 	src/render.h
 	src/shapes.h
 	src/simulation.h
+	src/radix_sort.h
+
+	external/gpu-radix-sort/radix_sort/scan.h
+	external/gpu-radix-sort/radix_sort/sort.h
 
 	# Glad loader source file
 	external/glad/src/glad.c
@@ -53,15 +57,26 @@ set(SOURCES
 # Add CUDA source files
 set(CUDA_SOURCES
 	src/simulation.cu
+	src/radix_sort.cu
+
+	external/gpu-radix-sort/radix_sort/scan.cu
+	external/gpu-radix-sort/radix_sort/sort.cu
 )
 
 # Add sources to executable
 add_executable(fluidsim ${SOURCES} ${CUDA_SOURCES})
+add_executable(test_radix_sort
+	tests/test_radix_sort.cpp
+	src/radix_sort.cu
+	external/gpu-radix-sort/radix_sort/sort.cu
+	external/gpu-radix-sort/radix_sort/scan.cu
+)
 
 # Set CUDA arch to compute 8.6 (for RTX 3060)
 set(CMAKE_CUDA_ARCHITECTURES "sm_86") 
 
 set_target_properties(fluidsim PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+set_target_properties(test_radix_sort PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 # Add include directories
 target_include_directories(fluidsim
@@ -70,6 +85,14 @@ target_include_directories(fluidsim
 	external/glm/
 	external/imgui/
 	external/imgui/backends/
+
+	external/gpu-radix-sort/
+)
+target_include_directories(test_radix_sort
+	PRIVATE
+	external/glm/
+
+	external/gpu-radix-sort/
 )
 
 # Add libraries
