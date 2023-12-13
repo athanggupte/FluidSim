@@ -4,6 +4,7 @@ This project is a submission to CSCI-596: Scientific Computing and Visualization
 
 Low Viscous Fluid -
 ![image](https://github.com/athanggupte/FluidSim/assets/45060273/236418b5-157b-45cb-9b8f-86a88db3f7c1)
+![Screenshot 2023-12-13 145142](https://github.com/athanggupte/FluidSim/assets/45060273/1174bf04-6886-4fd7-bf79-5aede2a08546)
 
 High Viscous Fluid -
 ![Screenshot 2023-12-13 143916](https://github.com/athanggupte/FluidSim/assets/45060273/020cf399-9ae8-49c4-9b67-fb64f3d9692a)
