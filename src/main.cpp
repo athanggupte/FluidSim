@@ -7,6 +7,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <cuda_runtime.h>
+#include <curand_kernel.h>
 
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -147,18 +148,15 @@ int main(int argc, char **argv)
 	// Initialize config
 	InitializeSimulationConfig(gSimCfg, cuDeviceProp);
 	logDebug("Simulation Config:\n");
-	printf("    NumParticles : %zu\n", gSimCfg.NumParticles);
-	printf("    GridDim      : (%u, %u, %u)\n", gSimCfg.GridDim.x, gSimCfg.GridDim.y, gSimCfg.GridDim.z);
-	printf("    BlockDim     : (%u, %u, %u)\n", gSimCfg.BlockDim.x, gSimCfg.BlockDim.y, gSimCfg.BlockDim.z);
-	printf("    Region       : (%f, %f, %f)\n", gSimCfg.Region.x, gSimCfg.Region.y, gSimCfg.Region.z);
+	printf("    NumParticles   : %zu\n", gSimCfg.NumParticles);
+	printf("    ThreadGridDim  : (%u, %u, %u)\n", gSimCfg.ThreadGridDim.x, gSimCfg.ThreadGridDim.y, gSimCfg.ThreadGridDim.z);
+	printf("    ThreadBlockDim : (%u, %u, %u)\n", gSimCfg.ThreadBlockDim.x, gSimCfg.ThreadBlockDim.y, gSimCfg.ThreadBlockDim.z);
+	printf("    Region         : (%f, %f, %f)\n", gSimCfg.Region.x, gSimCfg.Region.y, gSimCfg.Region.z);
 
 	windowData.fixedDeltaTime = gSimCfg.PhysicsDeltaTime;
 
 	// Initialize scene
-	gScene.cameraPosition = glm::vec3{ 0, 0, gSimCfg.RegionHalf.x * (1 + sqrtf(2)) + gSimCfg.RegionHalf.z + 1.f };
-	gScene.particleSize   = gSimCfg.ParticleRadius;
-	gScene.displayMode    = DM_Particles;
-	gScene.region         = *(glm::vec3*)&gSimCfg.Region;
+	InitializeScene(gScene, gSimCfg);
 
 	// Initialize OpenGL Renderer
 	Renderer renderer {};
@@ -254,6 +252,13 @@ int main(int argc, char **argv)
 			ImGui::Separator();
 			if (ImGui::Button("Dump data")) {
 				simulation.dumpData();
+			}
+
+			if (ImGui::CollapsingHeader("Advanced Options")) {
+				ImGui::DragFloat("Density Range", &gScene.densityRange);
+				ImGui::DragFloat("Velocity Range", &gScene.velocityRange);
+				ImGui::DragFloat("Pressure Range", &gScene.pressureRange);
+				ImGui::DragFloat("Acceleration Range", &gScene.accelerationRange);
 			}
 
 		}

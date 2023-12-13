@@ -33,23 +33,23 @@ struct Simulation
 {
 	float3 * positions;
 	float3 * velocities;
-	float * densities;
-	float * pressures;
+	float  * densities;
+	float  * pressures;
 	float3 * accelerations;
 	cudaGraphicsResource_t particlesGLCudaResource;
+
+	uint32_t * cellStarts;
+	uint32_t * particleCellIdx;
 
 	Result init(Renderer& renderer);
 	Result update(float deltaTime, float totalTime);
 	Result dumpData();
 
 	Result __initializeParticles();
+	Result __initializeCells();
 	Result __simulateParticles(float deltaTime, float totalTime);
+	Result __updateCells();
 };
 
 
-#define cudaCall(fn, ...) \
-	cuError = fn##(##__VA_ARGS__); \
-	if (cudaSuccess != cuError) { \
-		logError("[" STR(fn) "] Failed! error : [%d] %s :: %s", cuError, cudaGetErrorName(cuError), cudaGetErrorString(cuError)); \
-		return FLSIM_ERROR; \
-	}
+

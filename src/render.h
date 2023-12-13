@@ -1,5 +1,6 @@
 #pragma once
-#include "shapes.h"
+#include <glm/vec3.hpp>
+
 #include "common.h"
 
 enum DisplayMode
@@ -30,6 +31,10 @@ struct Scene
 	glm::vec3 region;
 
 	DisplayMode displayMode;
+	float densityRange;
+	float velocityRange;
+	float pressureRange;
+	float accelerationRange;
 };
 
 #define FLSIM_GL_MAX_INSTANCES 100000u

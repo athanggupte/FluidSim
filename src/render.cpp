@@ -1,5 +1,6 @@
 #include "render.h"
 #include "common.h"
+#include "shapes.h"
 #include "simulation.h"
 
 #include <glad/glad.h>
@@ -99,6 +100,7 @@ layout (location = 4) flat in vec3  vertAcceleration;
 layout (location = 0) out vec4 fragColor;
 
 layout (location = 3) uniform int uniDisplayMode;
+layout (location = 4) uniform vec4 uniValueRanges;
 
 const vec3 lightDir = vec3(1, 1, 0.5);
 const vec3 albedo = vec3(0.23, 0.42, 0.84);
@@ -116,7 +118,7 @@ void main()
 		}
 		case 1: // Density
 		{
-			float level = vertDensity / 2.0;
+			float level = vertDensity / uniValueRanges.x;
 			vec3 color;
 			color.r = sin(level);
 			color.g = sin(level * 2.0);
@@ -126,7 +128,7 @@ void main()
 		}
 		case 2: // Velocity
 		{
-			float level = length(vertVelocity) / 15.f;
+			float level = length(vertVelocity) / uniValueRanges.y;
 			vec3 color;
 			color.r = sin(level);
 			color.g = sin(level * 2.0);
@@ -136,7 +138,7 @@ void main()
 		}
 		case 3: // Pressure
 		{
-			float level = abs(vertPressure) / 20.0;
+			float level = abs(vertPressure) / uniValueRanges.z;
 			vec3 color;
 			color.r = sin(level);
 			color.g = sin(level * 2.0);
@@ -146,7 +148,7 @@ void main()
 		}
 		case 4: // Acceleration
 		{
-			float level = length(vertAcceleration) / 10.0;
+			float level = length(vertAcceleration) / uniValueRanges.w;
 			vec3 color;
 			color.r = sin(level);
 			color.g = sin(level * 2.0);
@@ -343,7 +345,7 @@ void Renderer::destroy()
 
 void Renderer::draw(Scene &scene)
 {
-	// logDebug("===== New Frame =====");
+	// Draw particles
 	glUseProgram(shaderProgram);
 	glBindVertexArray(VAO);
 
@@ -359,6 +361,8 @@ void Renderer::draw(Scene &scene)
 	int displayMode = scene.displayMode;
 	glUniform1i(3, displayMode);
 
+	glUniform4f(4, scene.densityRange, scene.velocityRange, scene.pressureRange, scene.accelerationRange);
+
 	int numDrawCalls = gSimCfg.NumParticles / FLSIM_GL_MAX_INSTANCES;
 	for (int i = 0; i < numDrawCalls; i++)
 	{
@@ -366,7 +370,7 @@ void Renderer::draw(Scene &scene)
 	}
 	glDrawElementsInstanced(GL_TRIANGLES, (int)sphereTrisCount, GL_UNSIGNED_INT, nullptr, gSimCfg.NumParticles % FLSIM_GL_MAX_INSTANCES); // Draw remaining particles
 
-
+	// Draw lines
 	glUseProgram(lineShaderProgram);
 	glm::vec3 region = scene.region;
 	glUniform3fv(0, 1, glm::value_ptr(region));

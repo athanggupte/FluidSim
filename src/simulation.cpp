@@ -4,6 +4,7 @@
 #include <cuda_gl_interop.h>
 
 #include "common.h"
+#include "cuda_common.h"
 
 thread_local static cudaError_t cuError;
 
@@ -17,6 +18,7 @@ Result Simulation::init(Renderer& renderer)
 	if (FLSIM_SUCCESS != __initializeParticles()) {
 		return FLSIM_ERROR;
 	}
+
 	cudaCall(cudaGraphicsUnmapResources, 1, &particlesGLCudaResource);
 
 
@@ -31,6 +33,7 @@ Result Simulation::update(float deltaTime, float totalTime)
 	cudaCall(cudaGraphicsResourceGetMappedPointer, (void**)&positions, &size, particlesGLCudaResource);
 	
 	__simulateParticles(deltaTime, totalTime);
+	__updateCells();
 
 	cudaCall(cudaGraphicsUnmapResources, 1, &particlesGLCudaResource);
 

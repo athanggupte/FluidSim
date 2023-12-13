@@ -1,17 +1,20 @@
 #include "simulation.h"
-#include "config.h"
 
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
-#include <curand_kernel.h>
+
+#include "config.h"
 
 #ifdef __INTELLISENSE__
 void __syncthreads();
 #endif
 
 #include <cmath>
-
+#include <glm/geometric.hpp>
 #include <glm/gtc/constants.hpp>
+
+#include "cuda_common.h"
+#include "radix_sort.h"
 
 struct SimulationData
 {
@@ -24,7 +27,6 @@ struct SimulationData
 
 // CUDA Constants
 __constant__ __device__ struct SimulationConfig dSimCfg;
-// __device__ curandState_t * dRngStates;
 curandState_t * gRngStates;
 
 // CUDA Kernel Function Forward Declarations
@@ -33,14 +35,6 @@ __global__ void cuSimulateParticles(SimulationData sim, curandState_t * rngState
 
 thread_local static cudaError_t cuError;
 
-#define cudaKernelCall(kernel, gridDim, blockDim, ...) \
-	kernel <<< gridDim, blockDim >>> (##__VA_ARGS__); \
-	cuError = cudaGetLastError(); \
-	if (cudaSuccess != cuError) { \
-		logError("Kernel call [" STR(kernel) "] Failed! error : [%d] %s :: %s", cuError, cudaGetErrorName(cuError), cudaGetErrorString(cuError)); \
-		return FLSIM_ERROR; \
-	}
-
 // Host calling functions
 Result Simulation::__initializeParticles()
 {
@@ -48,12 +42,15 @@ Result Simulation::__initializeParticles()
 
 	cudaCall(cudaMalloc, &gRngStates, sizeof(curandState_t) * gSimCfg.NumParticles);
 
+	cudaCall(cudaMalloc, &cellStarts, sizeof(uint32_t) * gSimCfg.NumCells);
+	cudaCall(cudaMalloc, &particleCellIdx, sizeof(uint32_t) * gSimCfg.NumParticles);
+
 #ifdef FLSIM_CHECK_DEV_SIMCFG
 	SimulationConfig tmpCfg;
 	cudaMemcpyFromSymbol(&tmpCfg, dSimCfg, sizeof(SimulationConfig));
 	printf("NumParticles: %zu\n", tmpCfg.NumParticles);
-	printf("GridDim: (%u, %u, %u)\n", tmpCfg.GridDim.x, tmpCfg.GridDim.y, tmpCfg.GridDim.z);
-	printf("BlockDim: (%u, %u, %u)\n", tmpCfg.BlockDim.x, tmpCfg.BlockDim.y, tmpCfg.BlockDim.z);
+	printf("ThreadGridDim: (%u, %u, %u)\n", tmpCfg.ThreadGridDim.x, tmpCfg.ThreadGridDim.y, tmpCfg.ThreadGridDim.z);
+	printf("ThreadBlockDim: (%u, %u, %u)\n", tmpCfg.ThreadBlockDim.x, tmpCfg.ThreadBlockDim.y, tmpCfg.ThreadBlockDim.z);
 	printf("Region: (%f, %f, %f)\n", tmpCfg.Region.x, tmpCfg.Region.y, tmpCfg.Region.z);
 #endif
 
@@ -63,7 +60,13 @@ Result Simulation::__initializeParticles()
 	accelerations = (float3*)&pressures[gSimCfg.NumParticles];
 
 	SimulationData inputs { positions, velocities, densities, pressures, accelerations };
-	cudaKernelCall(cuInitializeParticles, gSimCfg.GridDim, gSimCfg.BlockDim, inputs, gRngStates, gSimCfg.NumParticles);
+	cudaKernelCall(cuInitializeParticles, gSimCfg.ThreadGridDim, gSimCfg.ThreadBlockDim, inputs, gRngStates, gSimCfg.NumParticles);
+
+	return FLSIM_SUCCESS;
+}
+
+Result Simulation::__initializeCells()
+{
 
 	return FLSIM_SUCCESS;
 }
@@ -71,8 +74,13 @@ Result Simulation::__initializeParticles()
 Result Simulation::__simulateParticles(float deltaTime, float totalTime)
 {
 	SimulationData inputs { positions, velocities, densities, pressures, accelerations };
-	cudaKernelCall(cuSimulateParticles, gSimCfg.GridDim, gSimCfg.BlockDim, inputs, gRngStates, gSimCfg.NumParticles, deltaTime, totalTime);
+	cudaKernelCall(cuSimulateParticles, gSimCfg.ThreadGridDim, gSimCfg.ThreadBlockDim, inputs, gRngStates, gSimCfg.NumParticles, deltaTime, totalTime);
 
+	return FLSIM_SUCCESS;
+}
+
+Result Simulation::__updateCells()
+{
 	return FLSIM_SUCCESS;
 }
 
@@ -102,6 +110,23 @@ __device__ dim3 cuVectorIndex(int gid)
     uint32_t yidx = threadIdx.y + blockIdx.y * blockDim.y;
     uint32_t zidx = threadIdx.z + blockIdx.z * blockDim.z;*/
     return { xidx, yidx, zidx };
+}
+
+__device__ dim3 cuCellVectorIndex(float3 position)
+{
+	float3 cellSize = dSimCfg.CellSize;
+	float3 regionHalf = dSimCfg.RegionHalf;
+
+	uint32_t xidx = (position.x + regionHalf.x) / cellSize.x;
+	uint32_t yidx = (position.y + regionHalf.y) / cellSize.y;
+	uint32_t zidx = (position.z + regionHalf.z) / cellSize.z;
+
+	return { xidx, yidx, zidx };
+}
+
+__device__ uint32_t cuCellIndex(dim3 vid)
+{
+	return vid.x * dSimCfg.CellGridDim.y * dSimCfg.CellGridDim.z + vid.y * dSimCfg.CellGridDim.z + vid.z;
 }
 
 __device__ void cuOscillate(float& val, float deltaTime, float totalTime)
@@ -212,6 +237,9 @@ __device__ glm::vec3 cuCalculatePressureAcceleration(SimulationData sim, curandS
 	float     pressure = sim.pressures[gid];
 	float     density2 = density * density;
 
+	density += glm::epsilon<float>();
+	density2 += glm::epsilon<float>();
+
 	for (uint32_t i = 0; i < count; i++) {
 		if (i == gid) continue;
 		glm::vec3 deltaPos = *(glm::vec3*)&sim.positions[i] - position;
@@ -243,11 +271,15 @@ __device__ glm::vec3 cuCalculateViscosityAcceleration(SimulationData sim, curand
 	float     pressure = sim.pressures[gid];
 	float     density2 = density * density;
 
+	density += glm::epsilon<float>();
+	density2 += glm::epsilon<float>();
+
 	for (uint32_t i = 0; i < count; i++) {
 		if (i == gid) continue;
 		glm::vec3 deltaPos = *(glm::vec3*)&sim.positions[i] - position;
 		glm::vec3 deltaVel = *(glm::vec3*)&sim.velocities[i] - velocity;
 		float dist = glm::length(deltaPos);
+		dist += glm::epsilon<float>();
 
 		if (dist < 2 * dSimCfg.SmoothingRadius) {
 			float dW = cuWendlandC2Derivative(dSimCfg.SmoothingRadius, dist);
@@ -306,14 +338,11 @@ __global__ void cuSimulateParticles(SimulationData sim, curandState_t * rngState
 	if (gid < count) {
 		glm::vec3 prev_position     = *(glm::vec3*)&sim.positions[gid];
 		glm::vec3 prev_velocity     = *(glm::vec3*)&sim.velocities[gid];
-		float     prev_density      = sim.densities[gid];
-		float     prev_pressure     = sim.pressures[gid];
-		// glm::vec3 acceleration = *(glm::vec3*)&sim.accelerations[gid];
 
 		glm::vec3 position     = prev_position;
 		glm::vec3 velocity     = prev_velocity;
-		float     density      = prev_density;
-		float     pressure     = prev_pressure;
+		float     density;
+		float     pressure;
 
 		glm::vec3 pressureAcc = cuCalculatePressureAcceleration(sim, rngStates, count, gid);
 		glm::vec3 viscosityAcc = cuCalculateViscosityAcceleration(sim, rngStates, count, gid);
